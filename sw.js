@@ -1,5 +1,5 @@
 // Plata Service Worker
-const CACHE = 'plata-v1';
+const CACHE = 'plata-v2';
 const STATIC = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

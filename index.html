@@ -160,7 +160,7 @@ const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isF
 const ACCENTS = ['#0F7A55', '#1D4ED8', '#B45309'];
 function seed() {
   const t = today();
-  const settings = { name: 'Joseth', budget: 420, payday: 5, accent: '#0F7A55', methods: ['BAC', 'CMF', 'Efectivo', 'Yappy', 'Nómina'] };
+  const settings = { name: 'Joseth', budget: 420, payday: 4, payAmount: 420, autoPay: true, accent: '#0F7A55', methods: ['BAC', 'CMF', 'Efectivo', 'Yappy', 'Nómina'] };
   const back = (t.getDay() - settings.payday + 7) % 7;
   const start = addDays(t, -back);
   const clamp = d => (d > t ? t : d);
@@ -190,7 +190,6 @@ function seed() {
 }
 let S = load('data', null) || seed();
 const persist = () => store('data', S);
-persist();
 
 /* ---------- Cálculos ---------- */
 function cycle() {
@@ -200,6 +199,34 @@ function cycle() {
   return { start, end: addDays(start, 6), next: addDays(start, 7) };
 }
 const inCycle = (m, c) => m.date >= iso(c.start) && m.date <= iso(c.end);
+
+/* ---------- Pago semanal automático ---------- */
+// Si la semana actual ya tiene un ingreso, cuenta como cobrada; si no, el pago de esta semana se registra solo
+function anchorAutoPay() {
+  const c = cycle();
+  const paid = S.moves.some(m => m.type === 'income' && inCycle(m, c));
+  S.settings.lastAutoPay = iso(paid ? c.start : addDays(c.start, -7));
+}
+function runAutoPay() {
+  const st = S.settings;
+  if (!st.autoPay || !(st.payAmount > 0)) return 0;
+  if (!st.lastAutoPay) anchorAutoPay();
+  const c = cycle();
+  let d = addDays(parse(st.lastAutoPay), 7), n = 0;
+  if (daysBetween(d, c.start) > 56) d = addDays(c.start, -56); // como mucho 8 semanas atrás
+  while (d <= c.start) {
+    S.moves.push({ id: uid(), name: 'Pago semanal', amount: st.payAmount, type: 'income', env: null, method: 'Nómina', date: iso(d), ts: Date.now() + n, auto: true });
+    st.lastAutoPay = iso(d); d = addDays(d, 7); n++;
+  }
+  return n;
+}
+// Migración v2: cobro los jueves + pago automático
+if (!S.v) {
+  Object.assign(S.settings, { payday: 4, payAmount: S.settings.budget || 420, autoPay: true });
+  delete S.settings.lastAutoPay; S.v = 2;
+}
+runAutoPay();
+persist();
 function spentCycle(env) {
   const c = cycle();
   return S.moves.filter(m => m.type === 'expense' && inCycle(m, c) && (env === undefined || m.env === env))
@@ -510,6 +537,10 @@ function sheetSettings() {
       <div class="field"><label for="c-budget">Presupuesto semanal ($)</label><input id="c-budget" class="input" inputmode="decimal" value="${st.budget}"></div>
       <div class="field"><label for="c-payday">Día de pago</label><select id="c-payday" class="input">${DOW.map((d, i) => `<option value="${i}" ${i === st.payday ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
     </div>
+    <div class="two">
+      <div class="field"><label for="c-pay">Monto del pago ($)</label><input id="c-pay" class="input" inputmode="decimal" value="${st.payAmount ?? ''}"></div>
+      <label class="field"><span style="font-size:13px;color:var(--muted);font-weight:500">Registrar solo</span><span class="input" style="display:flex;align-items:center;gap:10px"><input id="c-auto" type="checkbox" ${st.autoPay ? 'checked' : ''} style="width:20px;height:20px;margin:0;accent-color:var(--accent)">Cada ${DOW[st.payday].toLowerCase()}</span></label>
+    </div>
     <div class="field"><label for="c-methods">Métodos de pago (separados por coma)</label><input id="c-methods" class="input" value="${esc(st.methods.join(', '))}"></div>
     <div class="field"><label>Color</label><div class="swatches">${ACCENTS.map(c => `<button class="swatch ${accent === c ? 'on' : ''}" style="background:${c}" data-s="accent" data-v="${c}" aria-label="Color ${c}"></button>`).join('')}</div></div>
     <button class="btn primary" data-s="save">Guardar</button>
@@ -524,7 +555,10 @@ function sheetSettings() {
     if (a === 'save') {
       st.name = val(root, 'c-name').trim() || st.name;
       st.budget = num(val(root, 'c-budget'));
-      st.payday = Number(val(root, 'c-payday'));
+      const payday = Number(val(root, 'c-payday')), auto = root.querySelector('#c-auto').checked;
+      const reanchor = payday !== st.payday || (auto && !st.autoPay);
+      st.payday = payday; st.autoPay = auto; st.payAmount = num(val(root, 'c-pay'));
+      if (reanchor) anchorAutoPay();
       const ms = val(root, 'c-methods').split(',').map(s => s.trim()).filter(Boolean);
       if (ms.length) st.methods = [...new Set(ms)];
       st.accent = accent;
@@ -563,6 +597,8 @@ function route() {
 }
 let lastPath = null;
 function render() {
+  const paid = runAutoPay(); // al volver a la app, revisa si ya toca registrar el pago
+  if (paid) { persist(); setTimeout(() => toast(paid > 1 ? `Se registraron ${paid} pagos semanales` : 'Se registró tu pago semanal'), 300); }
   document.documentElement.style.setProperty('--accent', S.settings.accent || ACCENTS[0]);
   const { path, q } = route();
   if (path === 'agregar' && lastPath !== location.hash) initForm(q);

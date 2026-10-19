@@ -3,6 +3,7 @@
 Presupuesto semanal por sobres, vencimientos de tarjetas y movimientos. PWA instalable en el móvil, sin build step: todo vive en `index.html`.
 
 - **Inicio** — disponible de la semana (presupuesto − gastado desde el día de pago), próximos vencimientos y últimos movimientos.
+- **Pago automático** — cada día de pago (por defecto jueves) registra solo el "Pago semanal"; se ajusta en Ajustes.
 - **Agregar** — gastos e ingresos con sobre, método y fecha.
 - **Sobres** — límite semanal por categoría.
 - **Tarjetas** — tarjetas, cuotas y servicios; "Pagar" registra el gasto y pasa al mes siguiente.
