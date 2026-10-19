@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plata</title>
+<meta name="description" content="Presupuesto semanal por sobres, vencimientos de tarjetas y movimientos">
+<meta name="theme-color" content="#F3F5F4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Plata">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F3F5F4; --ink:#0E1A16; --muted:#5B6762; --line:#DCE2DF; --soft:#EEF1EF; --card:#FFFFFF;
+  --dark:#0E1A16; --dark-muted:#B9C6C0; --dark-chip:#1F332B; --dark-chip-ink:#CFE9DD; --dark-track:#2A3F37;
+  --warn:#A85A0C; --bad:#B42318; --accent:#0F7A55;
+  --display:'Space Grotesk',sans-serif; --body:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body)}
+body{min-height:100dvh;overscroll-behavior-y:none}
+a{color:var(--ink);text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.disp{font-family:var(--display)}
+
+.screen{max-width:480px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 20px calc(env(safe-area-inset-bottom,0px) + 120px);display:flex;flex-direction:column;gap:22px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.top .sub{font-size:13px;color:var(--muted)}
+.top h1{font-family:var(--display);font-size:24px;font-weight:600;margin:2px 0 0}
+.avatar{width:44px;height:44px;border-radius:22px;border:0;background:var(--dark);color:#fff;font-family:var(--display);font-weight:600;font-size:16px;flex-shrink:0}
+.iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.hero{background:var(--dark);color:#fff;border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.hero .row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--dark-muted);gap:8px}
+.chip-dark{font-size:12px;background:var(--dark-chip);color:var(--dark-chip-ink);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.hero .big{font-family:var(--display);font-size:44px;font-weight:600;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.track{height:8px;border-radius:4px;background:var(--dark-track);overflow:hidden}
+.track>div{height:8px;border-radius:4px;transition:width .4s}
+
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.btn{height:52px;border-radius:16px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15px;width:100%}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.dark{background:var(--dark);border-color:var(--dark);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn:active{transform:scale(.98)}
+
+.section{display:flex;flex-direction:column;gap:10px}
+.section-h{display:flex;justify-content:space-between;align-items:baseline}
+.section-h h2{font-family:var(--display);font-size:17px;font-weight:600;margin:0}
+.link{font-size:13px;color:var(--accent);font-weight:500;background:none;border:0;padding:0}
+.list{background:var(--card);border-radius:18px;padding:4px 16px}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--soft);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left}
+.item:last-child{border-bottom:0}
+.item .grow{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.item .t{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .m{font-size:12px;color:var(--muted)}
+.item .amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.date-badge{width:44px;height:44px;border-radius:12px;background:var(--soft);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.date-badge span:first-child{font-size:10px;color:var(--muted);text-transform:uppercase}
+.date-badge span:last-child{font-family:var(--display);font-size:16px;font-weight:600;line-height:1}
+.empty{padding:18px 0;text-align:center;font-size:14px;color:var(--muted)}
+.pay{height:32px;padding:0 12px;border-radius:10px;border:0;background:var(--soft);font-size:13px;font-weight:600;color:var(--accent);flex-shrink:0}
+
+.env{background:var(--card);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;border:0;text-align:left;width:100%}
+.env .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.env .name{font-size:15px;font-weight:600}
+.env .m{font-size:13px;color:var(--muted)}
+.env .track{background:var(--soft)}
+.summary{background:var(--card);border-radius:18px;padding:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.summary div{display:flex;flex-direction:column;gap:2px}
+.summary span:first-child{font-size:12px;color:var(--muted)}
+.summary span:last-child{font-family:var(--display);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);z-index:5}
+nav.tabs .in{max-width:480px;margin:0 auto;height:calc(64px + env(safe-area-inset-bottom,0px));padding:10px 0 env(safe-area-inset-bottom,0px);display:flex;justify-content:space-around;align-items:flex-start}
+nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:4px;width:64px;font-size:11px;color:var(--muted)}
+nav.tabs a.on{color:var(--accent);font-weight:600}
+nav.tabs a.fab{width:52px;height:52px;border-radius:26px;background:var(--dark);color:#fff;justify-content:center;margin-top:-4px}
+
+/* Formulario */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:14px;padding:4px;gap:4px}
+.seg button{height:40px;border:0;border-radius:10px;background:none;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(14,26,22,.08)}
+.amount{display:flex;align-items:center;justify-content:center;gap:4px;padding:18px 0 6px}
+.amount span{font-family:var(--display);font-size:36px;font-weight:600;color:var(--muted)}
+.amount input{font-family:var(--display);font-size:48px;font-weight:600;letter-spacing:-1px;border:0;background:none;outline:none;width:6.5ch;text-align:left;font-variant-numeric:tabular-nums;padding:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.field>label{font-size:13px;color:var(--muted);font-weight:500}
+.input{height:50px;border-radius:14px;border:1px solid var(--line);background:var(--card);padding:0 14px;font-size:16px;width:100%;outline:none}
+.input:focus{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:14px;font-weight:500}
+.chip.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.swatches{display:flex;gap:12px}
+.swatch{width:40px;height:40px;border-radius:20px;border:3px solid transparent;outline:2px solid transparent}
+.swatch.on{border-color:#fff;outline-color:var(--ink)}
+
+/* Hoja inferior */
+.sheet-bg{position:fixed;inset:0;background:rgba(14,26,22,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .18s ease}
+.sheet{background:var(--bg);width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom,0px) + 20px);display:flex;flex-direction:column;gap:16px;max-height:92dvh;overflow:auto;animation:up .22s ease}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto}
+.sheet h3{font-family:var(--display);font-size:20px;font-weight:600;margin:0}
+@keyframes fade{from{opacity:0}}
+@keyframes up{from{transform:translateY(40px);opacity:.6}}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);transform:translateX(-50%);background:var(--dark);color:#fff;font-size:14px;padding:10px 16px;border-radius:12px;z-index:30;animation:fade .2s ease;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* ---------- Almacenamiento ---------- */
+const LS = 'pl_';
+const load = (k, d) => { try { const v = localStorage.getItem(LS + k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const store = (k, v) => { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch {} };
+
+/* ---------- Fechas ---------- */
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const daysBetween = (a, b) => Math.round((parse(iso(b)) - parse(iso(a))) / 864e5);
+const monthKey = (y, m) => `${y}-${pad(m + 1)}`;
+const DOW = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DOW3 = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const MON = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 864e5 + 1) / 7);
+}
+function relDay(s) {
+  const d = parse(s), n = daysBetween(d, today());
+  if (n === 0) return 'Hoy';
+  if (n === 1) return 'Ayer';
+  return `${cap(DOW3[d.getDay()])} ${d.getDate()}${n > 6 ? ' ' + MON[d.getMonth()] : ''}`;
+}
+
+/* ---------- Formato ---------- */
+const money = n => '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const num = v => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? Math.round(n * 100) / 100 : 0; };
+
+/* ---------- Estado ---------- */
+const ACCENTS = ['#0F7A55', '#1D4ED8', '#B45309'];
+function seed() {
+  const t = today();
+  const settings = { name: 'Joseth', budget: 420, payday: 5, accent: '#0F7A55', methods: ['BAC', 'CMF', 'Efectivo', 'Yappy', 'Nómina'] };
+  const back = (t.getDay() - settings.payday + 7) % 7;
+  const start = addDays(t, -back);
+  const clamp = d => (d > t ? t : d);
+  const envelopes = [
+    { id: 'comida', name: 'Comida', limit: 150 },
+    { id: 'transporte', name: 'Transporte', limit: 60 },
+    { id: 'servicios', name: 'Servicios', limit: 80 },
+    { id: 'ocio', name: 'Ocio', limit: 50 },
+    { id: 'ahorro', name: 'Ahorro', limit: 80 }
+  ];
+  const mv = (name, amount, type, env, method, d, ord) => ({ id: uid(), name, amount, type, env, method, date: iso(d), ts: ord });
+  const moves = [
+    mv('Pago semanal', 420, 'income', null, 'Nómina', start, 1),
+    mv('Mercado semanal', 96.40, 'expense', 'comida', 'BAC', start, 2),
+    mv('Salida con amigos', 45, 'expense', 'ocio', 'Yappy', clamp(addDays(start, 1)), 3),
+    mv('Recarga celular', 34, 'expense', 'servicios', 'Yappy', clamp(addDays(start, 1)), 4),
+    mv('Gasolina', 20, 'expense', 'transporte', 'Efectivo', addDays(t, -1) < start ? start : addDays(t, -1), 5),
+    mv('Supermercado', 38.20, 'expense', 'comida', 'BAC', t, 6)
+  ];
+  const prev = monthKey(t.getMonth() === 0 ? t.getFullYear() - 1 : t.getFullYear(), (t.getMonth() + 11) % 12);
+  const dues = [
+    { id: uid(), name: 'Tarjeta BAC', type: 'tarjeta', amount: 85, day: 25, env: null, lastPaid: prev },
+    { id: uid(), name: 'CMF — cuota', type: 'cuota', amount: 42.5, day: 28, env: null, total: 12, paid: 3, lastPaid: prev },
+    { id: uid(), name: 'Internet', type: 'servicio', amount: 35, day: 30, env: 'servicios', lastPaid: prev }
+  ];
+  return { settings, envelopes, moves, dues };
+}
+let S = load('data', null) || seed();
+const persist = () => store('data', S);
+persist();
+
+/* ---------- Cálculos ---------- */
+function cycle() {
+  const t = today();
+  const back = (t.getDay() - S.settings.payday + 7) % 7;
+  const start = addDays(t, -back);
+  return { start, end: addDays(start, 6), next: addDays(start, 7) };
+}
+const inCycle = (m, c) => m.date >= iso(c.start) && m.date <= iso(c.end);
+function spentCycle(env) {
+  const c = cycle();
+  return S.moves.filter(m => m.type === 'expense' && inCycle(m, c) && (env === undefined || m.env === env))
+    .reduce((a, m) => a + m.amount, 0);
+}
+const envName = id => (S.envelopes.find(e => e.id === id) || {}).name;
+const sortedMoves = () => [...S.moves].sort((a, b) => b.date.localeCompare(a.date) || (b.ts || 0) - (a.ts || 0));
+const nextTs = () => Date.now();
+
+function dueNext(d) {
+  const [ly, lm] = d.lastPaid.split('-').map(Number); // lm 1–12 → siguiente mes (0-based) = lm
+  let y = ly, m = lm; if (m > 11) { m = 0; y++; }
+  const last = new Date(y, m + 1, 0).getDate();
+  return { date: new Date(y, m, Math.min(d.day, last)), key: monthKey(y, m) };
+}
+const dueDone = d => d.type === 'cuota' && d.paid >= d.total;
+function dueInfo(d) {
+  const { date } = dueNext(d);
+  const n = daysBetween(today(), date);
+  const base = d.type === 'tarjeta' ? 'Pago mínimo' : d.type === 'cuota' ? `Cuota ${Math.min(d.paid + 1, d.total)} de ${d.total}` : `Sobre: ${envName(d.env) || 'sin sobre'}`;
+  const when = n < 0 ? `vencido hace ${-n} ${-n === 1 ? 'día' : 'días'}` : n === 0 ? 'vence hoy' : n === 1 ? 'mañana' : `en ${n} días`;
+  const urgent = n <= 7;
+  return { date, n, tag: urgent ? `${base} · ${when}` : base, color: n < 0 ? 'var(--bad)' : urgent ? 'var(--warn)' : 'var(--muted)' };
+}
+const activeDues = () => S.dues.filter(d => !dueDone(d)).map(d => ({ d, i: dueInfo(d) })).sort((a, b) => a.i.date - b.i.date);
+
+/* ---------- Iconos ---------- */
+const I = {
+  plus: (s = 18, w = 2.2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`,
+  up: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
+  home: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>`,
+  env: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>`,
+  card: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>`,
+  close: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  back: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>`
+};
+
+/* ---------- Componentes ---------- */
+function nav(tab) {
+  const a = (h, id, ic, label) => `<a href="#/${h}" class="${tab === id ? 'on' : ''}">${ic}${label}</a>`;
+  return `<nav class="tabs" aria-label="Navegación"><div class="in">
+    ${a('', 'home', I.home, 'Inicio')}
+    ${a('sobres', 'sobres', I.env, 'Sobres')}
+    <a href="#/agregar" class="fab" aria-label="Agregar movimiento">${I.plus(24, 2.4)}</a>
+    ${a('tarjetas', 'tarjetas', I.card, 'Tarjetas')}
+  </div></nav>`;
+}
+function dueRow(d, i, withPay) {
+  return `<div class="item" data-act="due" data-id="${d.id}" role="button" tabindex="0">
+    <div class="date-badge"><span>${MON[i.date.getMonth()]}</span><span>${i.date.getDate()}</span></div>
+    <div class="grow"><span class="t">${esc(d.name)}</span><span class="m" style="color:${i.color}">${esc(i.tag)}</span></div>
+    <span class="amt">${money(d.amount)}</span>
+    ${withPay ? `<button class="pay" data-act="pay" data-id="${d.id}">Pagar</button>` : ''}
+  </div>`;
+}
+function moveRow(m) {
+  const meta = [relDay(m.date), m.method, m.env && envName(m.env)].filter(Boolean).join(' · ');
+  const inc = m.type === 'income';
+  return `<a class="item" href="#/agregar?id=${m.id}">
+    <div class="grow"><span class="t">${esc(m.name)}</span><span class="m">${esc(meta)}</span></div>
+    <span class="amt" style="color:${inc ? 'var(--accent)' : 'var(--ink)'}">${inc ? '+' : '−'}${money(m.amount)}</span>
+  </a>`;
+}
+function barColor(p) { return p > 1 ? 'var(--bad)' : p > .85 ? 'var(--warn)' : 'var(--accent)'; }
+
+/* ---------- Vistas ---------- */
+function viewHome() {
+  const t = today(), c = cycle();
+  const spent = spentCycle(), budget = S.settings.budget, left = budget - spent;
+  const p = budget > 0 ? spent / budget : 0;
+  const dues = activeDues().slice(0, 3);
+  const moves = sortedMoves().slice(0, 5);
+  const initial = (S.settings.name || '?').trim().charAt(0).toUpperCase();
+  return `<main class="screen">
+    <div class="top">
+      <div><div class="sub">${DOW[t.getDay()]}, ${t.getDate()} ${MON[t.getMonth()]}</div><h1>Hola, ${esc(S.settings.name || '')}</h1></div>
+      <button class="avatar" aria-label="Perfil" data-act="settings">${esc(initial)}</button>
+    </div>
+    <div class="hero">
+      <div class="row"><span>${left >= 0 ? 'Disponible esta semana' : 'Te pasaste esta semana'}</span><span class="chip-dark">Semana ${isoWeek(t)}</span></div>
+      <span class="big" style="${left < 0 ? 'color:#FDA29B' : ''}">${left < 0 ? '−' : ''}${money(left)}</span>
+      <div class="track"><div style="width:${Math.min(p, 1) * 100}%;background:${p > 1 ? '#F04438' : 'var(--accent)'}"></div></div>
+      <div class="row"><span>Gastado ${money(spent)} de ${money(budget)}</span><span>Pago: ${DOW3[c.next.getDay()]} ${c.next.getDate()}</span></div>
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="#/agregar">${I.plus()}Gasto</a>
+      <a class="btn" href="#/agregar?tipo=ingreso">${I.up}Ingreso</a>
+    </div>
+    <div class="section">
+      <div class="section-h"><h2>Próximos vencimientos</h2><a class="link" href="#/tarjetas">Ver todo</a></div>
+      <div class="list">${dues.length ? dues.map(x => dueRow(x.d, x.i)).join('') : `<div class="empty">Nada por pagar. Agrega tus tarjetas y cuotas.</div>`}</div>
+    </div>
+    <div class="section">
+      <div class="section-h"><h2>Últimos movimientos</h2><a class="link" href="#/movimientos">Ver todo</a></div>
+      <div class="list">${moves.length ? moves.map(moveRow).join('') : `<div class="empty">Aún no hay movimientos.</div>`}</div>
+    </div>
+  </main>${nav('home')}`;
+}
+
+function viewSobres() {
+  const c = cycle();
+  const assigned = S.envelopes.reduce((a, e) => a + e.limit, 0);
+  const spent = spentCycle();
+  const free = S.settings.budget - assigned;
+  const loose = spentCycle(null);
+  return `<main class="screen">
+    <div class="top"><div><div class="sub">Semana ${isoWeek(today())} · ${DOW3[c.start.getDay()]} ${c.start.getDate()} – ${DOW3[c.end.getDay()]} ${c.end.getDate()} ${MON[c.end.getMonth()]}</div><h1>Sobres</h1></div>
+      <button class="iconbtn" aria-label="Nuevo sobre" data-act="env-new">${I.plus(20)}</button></div>
+    <div class="summary">
+      <div><span>Asignado</span><span>${money(assigned)}</span></div>
+      <div><span>Gastado</span><span>${money(spent)}</span></div>
+      <div><span>${free < 0 ? 'Sobreasignado' : 'Sin asignar'}</span><span style="color:${free < 0 ? 'var(--bad)' : 'inherit'}">${money(free)}</span></div>
+    </div>
+    <div class="section">
+      ${S.envelopes.map(e => {
+        const s = spentCycle(e.id), p = e.limit > 0 ? s / e.limit : (s > 0 ? 2 : 0), r = e.limit - s;
+        return `<button class="env" data-act="env-edit" data-id="${e.id}">
+          <div class="row"><span class="name">${esc(e.name)}</span><span class="m num">${money(s)} de ${money(e.limit)}</span></div>
+          <div class="track"><div style="width:${Math.min(p, 1) * 100}%;background:${barColor(p)}"></div></div>
+          <div class="row"><span class="m" style="color:${r < 0 ? 'var(--bad)' : 'var(--muted)'}">${r < 0 ? `Excedido por ${money(r)}` : `Quedan ${money(r)}`}</span></div>
+        </button>`;
+      }).join('') || `<div class="list"><div class="empty">Crea sobres para repartir tu presupuesto semanal.</div></div>`}
+      ${loose > 0 ? `<div class="list"><div class="item"><div class="grow"><span class="t">Sin sobre</span><span class="m">Gastos sin asignar esta semana</span></div><span class="amt">${money(loose)}</span></div></div>` : ''}
+      <button class="btn" data-act="env-new">${I.plus()}Nuevo sobre</button>
+    </div>
+  </main>${nav('sobres')}`;
+}
+
+function viewTarjetas() {
+  const act = activeDues();
+  const done = S.dues.filter(dueDone);
+  const in30 = act.filter(x => x.i.n <= 30).reduce((a, x) => a + x.d.amount, 0);
+  return `<main class="screen">
+    <div class="top"><div><div class="sub">Por pagar en 30 días: <b class="num" style="color:var(--ink)">${money(in30)}</b></div><h1>Tarjetas</h1></div>
+      <button class="iconbtn" aria-label="Nuevo vencimiento" data-act="due-new">${I.plus(20)}</button></div>
+    <div class="section">
+      <div class="section-h"><h2>Vencimientos</h2></div>
+      <div class="list">${act.length ? act.map(x => dueRow(x.d, x.i, true)).join('') : `<div class="empty">No tienes vencimientos activos.</div>`}</div>
+      <button class="btn" data-act="due-new">${I.plus()}Agregar tarjeta, cuota o servicio</button>
+    </div>
+    ${done.length ? `<div class="section"><div class="section-h"><h2>Completados</h2></div><div class="list">
+      ${done.map(d => `<div class="item" data-act="due" data-id="${d.id}" role="button" tabindex="0"><div class="grow"><span class="t">${esc(d.name)}</span><span class="m">${d.total} de ${d.total} cuotas pagadas</span></div><span class="amt" style="color:var(--accent)">Listo</span></div>`).join('')}
+    </div></div>` : ''}
+  </main>${nav('tarjetas')}`;
+}
+
+function viewMovs() {
+  const groups = {};
+  sortedMoves().forEach(m => (groups[m.date] = groups[m.date] || []).push(m));
+  const keys = Object.keys(groups);
+  return `<main class="screen">
+    <div class="top"><a class="iconbtn" href="#/" aria-label="Volver">${I.back}</a><h1 style="flex:1;margin:0 0 0 12px">Movimientos</h1></div>
+    ${keys.length ? keys.map(k => {
+      const d = parse(k), tot = groups[k].reduce((a, m) => a + (m.type === 'income' ? m.amount : -m.amount), 0);
+      return `<div class="section"><div class="section-h"><h2 style="font-size:14px;color:var(--muted)">${relDay(k) === 'Hoy' || relDay(k) === 'Ayer' ? relDay(k) : cap(DOW[d.getDay()])}, ${d.getDate()} ${MON[d.getMonth()]}</h2><span class="m num" style="font-size:13px;color:var(--muted)">${tot < 0 ? '−' : '+'}${money(tot)}</span></div>
+        <div class="list">${groups[k].map(moveRow).join('')}</div></div>`;
+    }).join('') : `<div class="list"><div class="empty">Aún no hay movimientos.</div></div>`}
+  </main>${nav('')}`;
+}
+
+/* ---------- Agregar / editar movimiento ---------- */
+let F = null;
+function initForm(q) {
+  const m = q.id && S.moves.find(x => x.id === q.id);
+  F = m ? { ...m, amount: String(m.amount) }
+    : { id: null, type: q.tipo === 'ingreso' ? 'income' : 'expense', amount: '', name: '', env: null, method: q.tipo === 'ingreso' ? 'Nómina' : 'BAC', date: iso(today()) };
+}
+function viewAdd() {
+  const exp = F.type === 'expense';
+  const chip = (act, val, cur, label) => `<button class="chip ${cur === val ? 'on' : ''}" data-act="${act}" data-v="${esc(val ?? '')}">${esc(label)}</button>`;
+  return `<main class="screen" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + 28px)">
+    <div class="top"><a class="iconbtn" href="#/" data-act="cancel" aria-label="Cerrar">${I.close}</a><h1 style="flex:1;text-align:center;margin:0;font-size:18px">${F.id ? 'Editar movimiento' : 'Nuevo movimiento'}</h1><span style="width:44px"></span></div>
+    <div class="seg"><button class="${exp ? 'on' : ''}" data-act="type" data-v="expense">Gasto</button><button class="${!exp ? 'on' : ''}" data-act="type" data-v="income">Ingreso</button></div>
+    <div class="amount"><span>${exp ? '−$' : '+$'}</span><input id="f-amount" inputmode="decimal" placeholder="0.00" value="${esc(F.amount)}" aria-label="Monto" autocomplete="off"></div>
+    <div class="field"><label for="f-name">Concepto</label><input id="f-name" class="input" placeholder="${exp ? 'Ej. Supermercado' : 'Ej. Pago semanal'}" value="${esc(F.name)}" autocomplete="off"></div>
+    ${exp ? `<div class="field"><label>Sobre</label><div class="chips">${S.envelopes.map(e => chip('env', e.id, F.env, e.name)).join('')}${chip('env', '', F.env || '', 'Sin sobre')}</div></div>` : ''}
+    <div class="field"><label>Método</label><div class="chips">${S.settings.methods.map(x => chip('method', x, F.method, x)).join('')}</div></div>
+    <div class="field"><label for="f-date">Fecha</label><input id="f-date" type="date" class="input" value="${F.date}"></div>
+    <button class="btn primary" data-act="save-move">${F.id ? 'Guardar cambios' : exp ? 'Guardar gasto' : 'Guardar ingreso'}</button>
+    ${F.id ? `<button class="btn danger" data-act="del-move">Eliminar movimiento</button>` : ''}
+  </main>`;
+}
+function readForm() {
+  const a = document.getElementById('f-amount'), n = document.getElementById('f-name'), d = document.getElementById('f-date');
+  if (a) F.amount = a.value; if (n) F.name = n.value; if (d) F.date = d.value || iso(today());
+}
+
+/* ---------- Hojas (sheets) ---------- */
+let sheetEl = null;
+function openSheet(html, onClick) {
+  closeSheet();
+  sheetEl = document.createElement('div');
+  sheetEl.className = 'sheet-bg';
+  sheetEl.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+  sheetEl.addEventListener('click', e => {
+    if (e.target === sheetEl) return closeSheet();
+    const el = e.target.closest('[data-s]');
+    if (el) onClick(el.dataset.s, el, sheetEl);
+  });
+  document.body.appendChild(sheetEl);
+  const f = sheetEl.querySelector('input'); if (f && !f.readOnly && f.type !== 'file') setTimeout(() => f.focus(), 250);
+}
+function closeSheet() { if (sheetEl) { sheetEl.remove(); sheetEl = null; } }
+const val = (root, id) => root.querySelector('#' + id).value;
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+
+function sheetEnvelope(id) {
+  const e = S.envelopes.find(x => x.id === id) || { id: null, name: '', limit: '' };
+  openSheet(`<h3>${e.id ? 'Editar sobre' : 'Nuevo sobre'}</h3>
+    <div class="field"><label for="s-name">Nombre</label><input id="s-name" class="input" value="${esc(e.name)}" placeholder="Ej. Comida"></div>
+    <div class="field"><label for="s-limit">Límite semanal ($)</label><input id="s-limit" class="input" inputmode="decimal" value="${esc(e.limit)}" placeholder="0.00"></div>
+    <button class="btn primary" data-s="save">Guardar</button>
+    ${e.id ? `<button class="btn danger" data-s="del">Eliminar sobre</button>` : ''}`, (a, el, root) => {
+    if (a === 'save') {
+      const name = val(root, 's-name').trim(); if (!name) return toast('Ponle un nombre');
+      const limit = num(val(root, 's-limit'));
+      if (e.id) Object.assign(S.envelopes.find(x => x.id === e.id), { name, limit });
+      else S.envelopes.push({ id: uid(), name, limit });
+    } else if (a === 'del') {
+      if (!confirm(`¿Eliminar el sobre "${e.name}"? Los gastos quedan como "Sin sobre".`)) return;
+      S.envelopes = S.envelopes.filter(x => x.id !== e.id);
+      S.moves.forEach(m => { if (m.env === e.id) m.env = null; });
+      S.dues.forEach(d => { if (d.env === e.id) d.env = null; });
+    } else return;
+    persist(); closeSheet(); render();
+  });
+}
+
+function sheetDue(id) {
+  const d = S.dues.find(x => x.id === id);
+  const st = d ? { ...d } : { type: 'tarjeta', name: '', amount: '', day: '', env: null, total: 12, paid: 0 };
+  const draw = () => `<h3>${d ? 'Editar vencimiento' : 'Nuevo vencimiento'}</h3>
+    <div class="chips">${[['tarjeta', 'Tarjeta'], ['cuota', 'Cuota'], ['servicio', 'Servicio']].map(([v, l]) => `<button class="chip ${st.type === v ? 'on' : ''}" data-s="type" data-v="${v}">${l}</button>`).join('')}</div>
+    <div class="field"><label for="d-name">Nombre</label><input id="d-name" class="input" value="${esc(st.name)}" placeholder="${st.type === 'tarjeta' ? 'Ej. Tarjeta BAC' : st.type === 'cuota' ? 'Ej. CMF — cuota' : 'Ej. Internet'}"></div>
+    <div class="two">
+      <div class="field"><label for="d-amount">${st.type === 'tarjeta' ? 'Pago mínimo ($)' : 'Monto ($)'}</label><input id="d-amount" class="input" inputmode="decimal" value="${esc(st.amount)}" placeholder="0.00"></div>
+      <div class="field"><label for="d-day">Día de pago</label><input id="d-day" class="input" inputmode="numeric" value="${esc(st.day)}" placeholder="1–31"></div>
+    </div>
+    ${st.type === 'cuota' ? `<div class="two">
+      <div class="field"><label for="d-total">Total de cuotas</label><input id="d-total" class="input" inputmode="numeric" value="${esc(st.total)}"></div>
+      <div class="field"><label for="d-paid">Ya pagadas</label><input id="d-paid" class="input" inputmode="numeric" value="${esc(st.paid)}"></div>
+    </div>` : ''}
+    <div class="field"><label>Sobre (opcional)</label><div class="chips">${S.envelopes.map(e => `<button class="chip ${st.env === e.id ? 'on' : ''}" data-s="env" data-v="${e.id}">${esc(e.name)}</button>`).join('')}<button class="chip ${!st.env ? 'on' : ''}" data-s="env" data-v="">Ninguno</button></div></div>
+    <button class="btn primary" data-s="save">Guardar</button>
+    ${d ? `<button class="btn" data-s="pay">Registrar pago</button><button class="btn danger" data-s="del">Eliminar</button>` : ''}`;
+  const keep = root => {
+    const g = i => root.querySelector('#' + i);
+    st.name = g('d-name').value; st.amount = g('d-amount').value; st.day = g('d-day').value;
+    if (g('d-total')) { st.total = g('d-total').value; st.paid = g('d-paid').value; }
+  };
+  const handler = (a, el, root) => {
+    if (a === 'type' || a === 'env') {
+      keep(root); st[a] = el.dataset.v || null; if (a === 'type') st.type = el.dataset.v;
+      root.querySelector('.sheet').innerHTML = '<div class="grab"></div>' + draw(); return;
+    }
+    if (a === 'save') {
+      keep(root);
+      const name = st.name.trim(), amount = num(st.amount), day = Math.round(num(st.day));
+      if (!name) return toast('Ponle un nombre');
+      if (!(day >= 1 && day <= 31)) return toast('El día debe ser de 1 a 31');
+      const rec = { name, amount, day, type: st.type, env: st.env || null };
+      if (st.type === 'cuota') { rec.total = Math.max(1, Math.round(num(st.total))); rec.paid = Math.max(0, Math.min(rec.total, Math.round(num(st.paid)))); }
+      if (d) Object.assign(d, rec);
+      else {
+        const t = today(), prevY = t.getMonth() === 0 ? t.getFullYear() - 1 : t.getFullYear(), prevM = (t.getMonth() + 11) % 12;
+        rec.lastPaid = day < t.getDate() ? monthKey(t.getFullYear(), t.getMonth()) : monthKey(prevY, prevM);
+        S.dues.push({ id: uid(), ...rec });
+      }
+    } else if (a === 'del') {
+      if (!confirm(`¿Eliminar "${d.name}"?`)) return;
+      S.dues = S.dues.filter(x => x.id !== d.id);
+    } else if (a === 'pay') { closeSheet(); return sheetPay(d.id); }
+    else return;
+    persist(); closeSheet(); render();
+  };
+  openSheet(draw(), handler);
+}
+
+function sheetPay(id) {
+  const d = S.dues.find(x => x.id === id); if (!d) return;
+  const i = dueInfo(d);
+  let method = S.settings.methods.includes('Yappy') ? 'Yappy' : S.settings.methods[0];
+  const draw = () => `<h3>Pagar ${esc(d.name)}</h3>
+    <div class="m" style="font-size:14px;color:var(--muted)">${esc(i.tag)} · vence ${DOW3[i.date.getDay()]} ${i.date.getDate()} ${MON[i.date.getMonth()]}</div>
+    <div class="field"><label for="p-amount">Monto pagado ($)</label><input id="p-amount" class="input" inputmode="decimal" value="${d.amount}"></div>
+    <div class="field"><label>Pagado con</label><div class="chips">${S.settings.methods.filter(x => x !== d.name).map(x => `<button class="chip ${method === x ? 'on' : ''}" data-s="m" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>
+    <button class="btn primary" data-s="ok">Registrar pago</button>`;
+  openSheet(draw(), (a, el, root) => {
+    if (a === 'm') { const amt = val(root, 'p-amount'); method = el.dataset.v; root.querySelector('.sheet').innerHTML = '<div class="grab"></div>' + draw(); root.querySelector('#p-amount').value = amt; return; }
+    if (a !== 'ok') return;
+    const amount = num(val(root, 'p-amount')); if (!(amount > 0)) return toast('Escribe el monto');
+    S.moves.push({ id: uid(), name: d.name, amount, type: 'expense', env: d.env || null, method, date: iso(today()), ts: nextTs() });
+    d.lastPaid = dueNext(d).key;
+    if (d.type === 'cuota') d.paid = Math.min(d.total, (d.paid || 0) + 1);
+    persist(); closeSheet(); render(); toast('Pago registrado');
+  });
+}
+
+function sheetSettings() {
+  const st = S.settings;
+  let accent = st.accent;
+  const draw = () => `<h3>Ajustes</h3>
+    <div class="field"><label for="c-name">Tu nombre</label><input id="c-name" class="input" value="${esc(st.name)}"></div>
+    <div class="two">
+      <div class="field"><label for="c-budget">Presupuesto semanal ($)</label><input id="c-budget" class="input" inputmode="decimal" value="${st.budget}"></div>
+      <div class="field"><label for="c-payday">Día de pago</label><select id="c-payday" class="input">${DOW.map((d, i) => `<option value="${i}" ${i === st.payday ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label for="c-methods">Métodos de pago (separados por coma)</label><input id="c-methods" class="input" value="${esc(st.methods.join(', '))}"></div>
+    <div class="field"><label>Color</label><div class="swatches">${ACCENTS.map(c => `<button class="swatch ${accent === c ? 'on' : ''}" style="background:${c}" data-s="accent" data-v="${c}" aria-label="Color ${c}"></button>`).join('')}</div></div>
+    <button class="btn primary" data-s="save">Guardar</button>
+    <div class="two"><button class="btn" data-s="export">Exportar copia</button><button class="btn" data-s="import">Importar copia</button></div>
+    <input id="c-file" type="file" accept="application/json,.json" hidden>
+    <button class="btn danger" data-s="reset">Borrar todos los datos</button>`;
+  const handler = (a, el, root) => {
+    if (a === 'accent') {
+      accent = el.dataset.v; document.documentElement.style.setProperty('--accent', accent);
+      root.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.dataset.v === accent)); return;
+    }
+    if (a === 'save') {
+      st.name = val(root, 'c-name').trim() || st.name;
+      st.budget = num(val(root, 'c-budget'));
+      st.payday = Number(val(root, 'c-payday'));
+      const ms = val(root, 'c-methods').split(',').map(s => s.trim()).filter(Boolean);
+      if (ms.length) st.methods = [...new Set(ms)];
+      st.accent = accent;
+      persist(); closeSheet(); render(); toast('Ajustes guardados');
+    } else if (a === 'export') {
+      const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+      link.download = `plata-${iso(today())}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    } else if (a === 'import') {
+      const f = root.querySelector('#c-file');
+      f.onchange = () => {
+        const file = f.files[0]; if (!file) return;
+        file.text().then(txt => {
+          const d = JSON.parse(txt);
+          if (!d || !d.settings || !Array.isArray(d.moves) || !Array.isArray(d.envelopes) || !Array.isArray(d.dues)) throw 0;
+          S = d; persist(); closeSheet(); render(); toast('Copia importada');
+        }).catch(() => toast('Ese archivo no es una copia válida'));
+      };
+      f.click();
+    } else if (a === 'reset') {
+      if (!confirm('¿Borrar todos los movimientos, sobres y vencimientos? No se puede deshacer.')) return;
+      S = { settings: { ...st, accent }, envelopes: [], moves: [], dues: [] };
+      persist(); closeSheet(); render(); toast('Datos borrados');
+    }
+  };
+  openSheet(draw(), handler);
+}
+
+/* ---------- Router ---------- */
+const app = document.getElementById('app');
+function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const [path, qs] = h.split('?');
+  const q = Object.fromEntries(new URLSearchParams(qs || ''));
+  return { path: path || '', q };
+}
+let lastPath = null;
+function render() {
+  document.documentElement.style.setProperty('--accent', S.settings.accent || ACCENTS[0]);
+  const { path, q } = route();
+  if (path === 'agregar' && lastPath !== location.hash) initForm(q);
+  const html = path === 'agregar' ? viewAdd() : path === 'sobres' ? viewSobres() : path === 'tarjetas' ? viewTarjetas() : path === 'movimientos' ? viewMovs() : viewHome();
+  app.innerHTML = html;
+  if (lastPath !== location.hash) {
+    window.scrollTo(0, 0);
+    if (path === 'agregar' && !F.id) setTimeout(() => { const a = document.getElementById('f-amount'); a && a.focus(); }, 60);
+  }
+  lastPath = location.hash;
+}
+window.addEventListener('hashchange', () => { closeSheet(); render(); });
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  if (a === 'settings') { e.preventDefault(); return sheetSettings(); }
+  if (a === 'pay') { e.stopPropagation(); return sheetPay(id); }
+  if (a === 'due') return sheetDue(id);
+  if (a === 'due-new') return sheetDue(null);
+  if (a === 'env-edit') return sheetEnvelope(id);
+  if (a === 'env-new') return sheetEnvelope(null);
+  if (a === 'cancel') { e.preventDefault(); return history.length > 1 ? history.back() : (location.hash = '#/'); }
+  if (a === 'type' || a === 'env' || a === 'method') {
+    readForm();
+    F[a] = el.dataset.v || null;
+    if (a === 'type') { F.type = el.dataset.v; if (F.type === 'income') F.env = null; }
+    return render();
+  }
+  if (a === 'save-move') {
+    readForm();
+    const amount = num(F.amount);
+    if (!(amount > 0)) return toast('Escribe el monto');
+    const name = F.name.trim() || (F.type === 'income' ? 'Ingreso' : envName(F.env) || 'Gasto');
+    const rec = { name, amount, type: F.type, env: F.type === 'expense' ? (F.env || null) : null, method: F.method, date: F.date };
+    if (F.id) Object.assign(S.moves.find(m => m.id === F.id), rec);
+    else S.moves.push({ id: uid(), ts: nextTs(), ...rec });
+    persist(); toast(F.id ? 'Cambios guardados' : F.type === 'income' ? 'Ingreso guardado' : 'Gasto guardado');
+    location.hash = '#/';
+    return;
+  }
+  if (a === 'del-move') {
+    if (!confirm('¿Eliminar este movimiento?')) return;
+    S.moves = S.moves.filter(m => m.id !== F.id); persist(); toast('Movimiento eliminado');
+    location.hash = '#/';
+  }
+});
+app.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); }
+  if (e.key === 'Enter' && e.target.matches('#f-amount,#f-name')) document.querySelector('[data-act="save-move"]').click();
+});
+// Recalcular al volver a la app (cambia el día / la semana)
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetEl && route().path !== 'agregar') render(); });
+
+render();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
